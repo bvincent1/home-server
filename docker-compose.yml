@@ -34,7 +34,7 @@ services:
 
   n8n:
     privileged: true
-    build: .
+    build: ./n8n
     restart: always
     environment:
       - DB_TYPE=postgresdb
@@ -55,3 +55,114 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    network_mode: host
+    environment:
+      # - PUID=${UID}
+      # - PGID=13000
+      - VERSION=docker
+      - PLEX_CLAIM=${PLEX_CLAIM}
+    volumes:
+      - ${ROOT_DIR}/docker/plex-config:/config
+      - ${ROOT_DIR}/data/media:/data/media
+    restart: unless-stopped
+
+  # plex monitoring
+  # https://tautulli.com/
+  # http://localhost:8181
+  tautulli:
+    image: lscr.io/linuxserver/tautulli:latest
+    container_name: tautulli
+    depends_on:
+      - plex
+    environment:
+      # - PUID=${UID}
+      # - PGID=13000
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${ROOT_DIR}/docker/tautulli-config:/config
+    ports:
+      - 8181:8181
+    restart: unless-stopped
+
+  # http://localhost:7878
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      # - PUID=13002
+      # - PGID=13000
+      # - UMASK=002
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${ROOT_DIR}/docker/radarr-config:/config
+      - ${ROOT_DIR}/data:/data
+    ports:
+      - 7878:7878
+    restart: unless-stopped
+
+  # http://localhost:8989
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      # - PUID=13001
+      # - PGID=13000
+      # - UMASK=002
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${ROOT_DIR}/docker/sonarr-config:/config
+      - ${ROOT_DIR}/data:/data
+    ports:
+      - 8989:8989
+    restart: unless-stopped
+
+  # http://localhost:9696
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:develop
+    container_name: prowlarr
+    environment:
+      # - PUID=13006
+      # - PGID=13000
+      # - UMASK=002
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${ROOT_DIR}/docker/prowlarr-config:/config
+    ports:
+      - 9696:9696
+    restart: unless-stopped
+  
+  jackett:
+    image: lscr.io/linuxserver/jackett:latest
+    container_name: jackett
+    environment:
+      # - PUID=13008
+      # - PGID=13000
+      # - UMASK=002
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${ROOT_DIR}/docker/jackett-config:/config
+    ports:
+      - 9117:9117
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      # - PUID=13007
+      # - PGID=13000
+      # - UMASK=002
+      - TZ=${TIMEZONE}
+      - WEBUI_PORT=8080
+    volumes:
+      - ${ROOT_DIR}/docker/qbittorrent-config:/config
+      - ${ROOT_DIR}/data/torrents:/data/torrents
+    ports:
+      - 8080:8080
+      - 6881:6881
+      - 6881:6881/udp
+    restart: unless-stopped
